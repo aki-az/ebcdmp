@@ -98,14 +98,14 @@ void dump_from_file(FILE *fpi, int reclen)
 
 void dump_from_stdin()
 {
-	unsigned char inbuf[1024*3+1], *p;
-	unsigned char buf[1024+1];
+	unsigned char inbuf[1024*4+1], *p;
+	unsigned char buf[1024*2+1];
 	int c, c1, c2;
 	int low = 0;
 	int idx = 0;
 	
 	while(1) {
-		if (NULL == fgets(inbuf, 1024*3, stdin)) break;
+		if (NULL == fgets(inbuf, 1024*4, stdin)) break;
 		for(p = inbuf; *p != '\0'; p++) {
 			c = -1;
 			if (*p >= '0' && *p <= '9') c = *p - '0';
@@ -122,6 +122,7 @@ void dump_from_stdin()
 				c2 = c;
 				buf[idx] = c1 * 16 + c2;
 				idx++;
+				low = 0;
 			}
 		}
 		dump(0, buf, idx);
