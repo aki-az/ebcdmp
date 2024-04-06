@@ -15,6 +15,8 @@
 unsigned char ebc2ascii[256];
 unsigned char hdr[32 * 1024 +10 +10];
 
+int swJJIS = 0;  // JIS漢字モード=1
+
 void dump(int cnt, unsigned char *buf, int reclen)
 {
 	int i;
@@ -38,13 +40,30 @@ void dump(int cnt, unsigned char *buf, int reclen)
 	// 2バイト表示
 	printf("K%4d : ", cnt);
 	for(i=0; i<reclen; i++) {
-		
+
 		knj1 = buf[i];
 		knj2 = buf[i+1];
 
+		// JIS漢字モード(超暫定対応)
+		if (swJJIS == 1) {
+			if (knj1 % 2) {
+			    knj1 = ((knj1 + 1) / 2) + 0x70;
+			    knj2 = knj2 + 0x1f;
+			} else {
+			    knj1 = (knj1 / 2) + 0x70;
+			    knj2 = knj2 + 0x7d;
+			}
+			if (knj1 >= 0xa0) { knj1 = knj1 + 0x40; }
+			if (knj2 >= 0x7f) { knj2 = knj2 + 1; }
+			printf("%c%c", knj1, knj2);
+			i++;
+			continue;
+		}
+		
 		if (knj1 == 0x40 && knj2 == 0x40) {
 			printf("%c", ebc2ascii[0x40]);
 			printf("%c", ebc2ascii[0x40]);
+			i++;
 			continue;
 		}
 
@@ -86,11 +105,11 @@ void dump_from_file(FILE *fpi, int reclen)
 
 	cnt = 1;
 	while(1) {
-		sz = fread(buf, reclen, 1, fpi);
-		if (feof(fpi) != 0) break;
+		sz = fread(buf, 1, reclen, fpi);
+		if (sz == 0) break;
 
 		if ((cnt-1) % 10 == 0) printf("x%4d : %s\n", cnt, hdr);
-		dump(cnt, buf, reclen);
+		dump(cnt, buf, sz);
 
 		cnt++;
 	}
@@ -397,13 +416,25 @@ int main(int argc, char *argv[])
 	ebc2ascii[254]=0x2E;
 	ebc2ascii[255]=0x2E;
 
-	if (argc < 3) {
+	int paraOffset = 1;
+	int numArgc = 3;
+
+	// JIS漢字モード確認
+	if (argc > 1) {
+		if (strcmp(argv[1], "-JJIS") == 0) {
+			swJJIS = 1;
+			paraOffset++;
+			numArgc++;
+		}
+	}
+
+	if (argc < numArgc) {
 		dump_from_stdin();
 		return 0;
 	}
 	
-	reclen = atoi(argv[1]);
-	infile_path = argv[2];
+	reclen = atoi(argv[paraOffset]);
+	infile_path = argv[paraOffset +1];
 	
 	
     FILE *fpi;
