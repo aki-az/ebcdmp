@@ -15,7 +15,8 @@
 unsigned char ebc2ascii[256];
 unsigned char hdr[32 * 1024 +10 +10];
 
-int swJJIS = 0;  // JIS漢字モード=1
+int swJisKanji = 0;  // JIS漢字モード=1
+int KLevel = 1; // 第一水準=1, 第二水準=2
 
 void dump(int cnt, unsigned char *buf, int reclen)
 {
@@ -45,7 +46,7 @@ void dump(int cnt, unsigned char *buf, int reclen)
 		knj2 = buf[i+1];
 
 		// JIS漢字モード(超暫定対応)
-		if (swJJIS == 1) {
+		if (swJisKanji == 1) {
 			if (knj1 % 2) {
 			    knj1 = ((knj1 + 1) / 2) + 0x70;
 			    knj2 = knj2 + 0x1f;
@@ -67,10 +68,20 @@ void dump(int cnt, unsigned char *buf, int reclen)
 			continue;
 		}
 
-		if (knj1 < 0xa1 || knj1 > 0xcf) {
-			printf(".");
-			continue;
+		
+		if (KLevel == 1) {
+			if (knj1 < 0xa1 || knj1 > 0xcf) {  // 第一水準の範囲チェック
+				printf(".");
+				continue;
+			}
+		} else {
+			// 第二水準はこっち
+			if (knj1 < 0xa1) {
+				printf(".");
+				continue;
+			}
 		}
+
 		i++;
 		if (knj2 < 0xa1 || knj2 > 0xfe) {
 			printf("..");
@@ -421,8 +432,13 @@ int main(int argc, char *argv[])
 
 	// JIS漢字モード確認
 	if (argc > 1) {
-		if (strcmp(argv[1], "-JJIS") == 0) {
-			swJJIS = 1;
+		if (strcmp(argv[1], "-JK") == 0) {
+			swJisKanji = 1;
+			paraOffset++;
+			numArgc++;
+		}
+		if (strcmp(argv[1], "-KL2") == 0) {
+			KLevel = 2;
 			paraOffset++;
 			numArgc++;
 		}
